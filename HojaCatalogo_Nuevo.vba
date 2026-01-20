@@ -1,0 +1,60 @@
+Option Explicit
+
+' =====================================================
+' HOJA: CATÁLOGO
+' Columnas: Descripción (B), ID/Referencia (C), Lote (D), 
+'           Cantidad de lotes repetidos (E)
+' Esta hoja es principalmente de consulta
+' Se actualiza automáticamente desde la Hoja Entradas
+' =====================================================
+
+Private Sub Worksheet_SelectionChange(ByVal Target As Range)
+    ' Esta hoja es principalmente de lectura
+    ' Puedes agregar lógica adicional aquí si es necesario
+End Sub
+
+
+Private Sub Worksheet_Change(ByVal Target As Range)
+    On Error GoTo ErrorHandler
+    
+    ' Bloquear cambios en columna E (cantidad de lotes repetidos)
+    ' Esta columna se debe actualizar automáticamente
+    If Target.Column = 5 Then ' Columna E
+        Application.EnableEvents = False
+        MsgBox "La cantidad de lotes repetidos se actualiza automáticamente desde Entradas.", _
+               vbExclamation, "Columna de Solo Lectura"
+        Application.Undo
+        Application.EnableEvents = True
+        Exit Sub
+    End If
+    
+    ' Validar cambios en Descripción, Referencia o Lote
+    If Target.Column = 2 Or Target.Column = 3 Or Target.Column = 4 Then
+        ' Aquí puedes agregar validaciones adicionales si es necesario
+    End If
+    
+    Exit Sub
+    
+ErrorHandler:
+    Application.EnableEvents = True
+    MsgBox "Error en Catálogo: " & Err.Description, vbCritical, "Error"
+End Sub
+
+
+' =====================================================
+' FUNCIÓN AUXILIAR: ACTUALIZAR DESCRIPCIÓN
+' Permite actualizar la descripción de una referencia
+' =====================================================
+Public Sub ActualizarDescripcion()
+    Dim wsEnt As Worksheet, wsCat As Worksheet
+    Dim ultEnt As Long, ultCat As Long
+    Dim i As Long, j As Long
+    
+    Set wsEnt = ThisWorkbook.Sheets("Entradas")
+    Set wsCat = ThisWorkbook.Sheets("Catalogo")
+    
+    ' Esta función puede ser llamada manualmente si se necesita
+    ' sincronizar descripciones desde otra fuente
+    
+    MsgBox "Función de actualización de descripción disponible para uso futuro.", vbInformation
+End Sub

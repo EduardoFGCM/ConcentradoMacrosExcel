@@ -1,0 +1,13 @@
+# Archivos temporales de Excel
+~$*.xl*
+*.tmp
+
+# Archivos de respaldo de Excel
+*.xlk
+~*.xlsm
+~*.xlsx
+~*.xlsb
+
+# Carpetas temporales
+Temp/
+temp/
