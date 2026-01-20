@@ -1,0 +1,13 @@
+# Excel temporales
+~$*.xl*
+*.tmp
+
+# Backups
+*.xlk
+~*.xlsm
+~*.xlsx
+~*.xlsb
+
+# Temp folders
+Temp/
+temp/
