@@ -35,7 +35,6 @@ ErrorHandler:
     ExisteLoteEnInventario = False
 End Function
 
-
 ' =====================================================
 ' FUNCIÓN: DEVOLVER INVENTARIO DIRECTO
 ' Suma la cantidad al inventario existente
@@ -213,3 +212,9 @@ Sub MostrarOcultarInventario_Nuevo()
         MsgBox "Hoja de Inventario visible", vbInformation
     End If
 End Sub
+
+
+
+
+
+    

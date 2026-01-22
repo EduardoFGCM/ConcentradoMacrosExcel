@@ -1,5 +1,5 @@
 Option Explicit
-
+   
 ' =====================================================
 ' HOJA: CATÁLOGO
 ' Columnas: Descripción (B), ID/Referencia (C), Lote (D), 
@@ -57,4 +57,31 @@ Public Sub ActualizarDescripcion()
     ' sincronizar descripciones desde otra fuente
     
     MsgBox "Función de actualización de descripción disponible para uso futuro.", vbInformation
+End Sub
+
+
+' =====================================================
+' BOTÓN: MOSTRAR/OCULTAR HOJA INVENTARIO
+' Requiere contraseña para acceder
+' =====================================================
+Sub MostrarOcultarInventario()
+    Dim ws As Worksheet
+    Dim pass As String
+
+    pass = InputBox("Ingresa la contraseña:")
+
+    If pass <> "cOMERLAT2025" Then
+        MsgBox "Contraseña incorrecta", vbCritical
+        Exit Sub
+    End If
+
+    Set ws = ThisWorkbook.Sheets("Inventario")
+
+    If ws.Visible = xlSheetVisible Then
+        ws.Visible = xlSheetVeryHidden
+    Else
+        ws.Visible = xlSheetVisible
+        ws.Activate
+    End If
+
 End Sub

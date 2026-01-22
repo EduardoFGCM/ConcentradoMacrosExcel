@@ -22,6 +22,11 @@ Private Sub Workbook_Open()
     Application.OnKey "~", "InterceptarEnter_Nuevo"
     On Error GoTo 0
     
+    ' Ocultar automáticamente la hoja de Inventario
+    On Error Resume Next
+    ThisWorkbook.Sheets("Inventario").Visible = xlSheetVeryHidden
+    On Error GoTo 0
+    
     ' Mensaje de bienvenida (opcional)
     ' MsgBox "Sistema de Control de Inventario iniciado.", vbInformation, "Bienvenido"
 End Sub
