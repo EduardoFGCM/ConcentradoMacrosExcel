@@ -7,6 +7,7 @@ Option Explicit
 ' =====================================================
 
 Dim oldRef As String, oldLote As String, oldRem As Variant
+Dim isHandlingEnt As Boolean
 
 Private Sub Worksheet_SelectionChange(ByVal Target As Range)
     On Error Resume Next
@@ -30,33 +31,24 @@ Private Function CrearOActualizarInventario(ByVal referencia As String, ByVal lo
     
     Dim shInv As Worksheet
     Set shInv = ThisWorkbook.Sheets("Inventario")
-    
-    Dim ultima As Long, i As Long
-    ultima = shInv.Cells(shInv.Rows.Count, "B").End(xlUp).Row
-    
-    ' Buscar si existe
-    For i = 2 To ultima
-        If Trim(shInv.Cells(i, "B").Value) = Trim(referencia) And _
-           Trim(shInv.Cells(i, "C").Value) = Trim(lote) Then
-            
-            ' Ya existe, actualizar cantidad
-            shInv.Cells(i, "D").Value = Val(shInv.Cells(i, "D").Value) + cantidad
-            
-            ' Si cantidad llega a 0 o menos, eliminar registro
-            If Val(shInv.Cells(i, "D").Value) <= 0 Then
-                shInv.Rows(i).Delete
-            End If
-            
-            CrearOActualizarInventario = True
-            Exit Function
+
+    Dim fila As Long
+    fila = FindInventarioRow(referencia, lote)
+    If fila > 0 Then
+        shInv.Cells(fila, "D").Value = Val(shInv.Cells(fila, "D").Value) + cantidad
+        If Val(shInv.Cells(fila, "D").Value) <= 0 Then
+            shInv.Rows(fila).Delete
         End If
-    Next i
+        CrearOActualizarInventario = True
+        Exit Function
+    End If
     
     ' No existe y cantidad es positiva, crear nuevo registro
     If cantidad > 0 Then
-        shInv.Cells(ultima + 1, "B").Value = referencia
-        shInv.Cells(ultima + 1, "C").Value = lote
-        shInv.Cells(ultima + 1, "D").Value = cantidad
+        fila = shInv.Cells(shInv.Rows.Count, "B").End(xlUp).Row + 1
+        shInv.Cells(fila, "B").Value = referencia
+        shInv.Cells(fila, "C").Value = lote
+        shInv.Cells(fila, "D").Value = cantidad
         CrearOActualizarInventario = True
     End If
 End Function
@@ -72,31 +64,25 @@ Private Function InsertarEnCatalogo(ByVal referencia As String, ByVal lote As St
     
     Dim wsCat As Worksheet
     Set wsCat = ThisWorkbook.Sheets("Catálogo")
-    
-    Dim ultima As Long, i As Long
-    ultima = wsCat.Cells(wsCat.Rows.Count, "C").End(xlUp).Row
-    
-    ' Buscar si existe esta combinación de referencia + lote
-    For i = 2 To ultima
-        If Trim(wsCat.Cells(i, "C").Value) = Trim(referencia) And _
-           Trim(wsCat.Cells(i, "D").Value) = Trim(lote) Then
-            
-            ' Ya existe, incrementar contador de lotes repetidos
-            wsCat.Cells(i, "E").Value = Val(wsCat.Cells(i, "E").Value) + 1
-            InsertarEnCatalogo = True
-            Exit Function
-        End If
-    Next i
+
+    Dim fila As Long
+    fila = FindCatalogoRow(referencia, lote)
+    If fila > 0 Then
+        wsCat.Cells(fila, "E").Value = Val(wsCat.Cells(fila, "E").Value) + 1
+        InsertarEnCatalogo = True
+        Exit Function
+    End If
     
     ' No existe, crear nuevo registro
     ' Buscar descripción (podría venir de otro sistema o dejarse vacía)
     Dim descripcion As String
     descripcion = ""  ' Aquí podrías buscar la descripción de otra fuente
-    
-    wsCat.Cells(ultima + 1, "B").Value = descripcion
-    wsCat.Cells(ultima + 1, "C").Value = referencia
-    wsCat.Cells(ultima + 1, "D").Value = lote
-    wsCat.Cells(ultima + 1, "E").Value = 1  ' Primera vez que aparece este lote
+
+    fila = wsCat.Cells(wsCat.Rows.Count, "C").End(xlUp).Row + 1
+    wsCat.Cells(fila, "B").Value = descripcion
+    wsCat.Cells(fila, "C").Value = referencia
+    wsCat.Cells(fila, "D").Value = lote
+    wsCat.Cells(fila, "E").Value = 1  ' Primera vez que aparece este lote
     
     InsertarEnCatalogo = True
 End Function
@@ -104,7 +90,8 @@ End Function
 
 Private Sub Worksheet_Change(ByVal Target As Range)
     On Error GoTo ErrorHandler
-    
+
+    If isHandlingEnt Then Exit Sub
     If Target.CountLarge > 1 Then Exit Sub
     If Target.Row < 7 Then Exit Sub ' No procesar encabezados
     
@@ -117,6 +104,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     newLote = Trim(Me.Cells(Target.Row, "D").Value)
     newRem = Trim(Me.Cells(Target.Row, "G").Value)
     
+    isHandlingEnt = True
     Application.EnableEvents = False
     Application.ScreenUpdating = False
 
@@ -126,10 +114,8 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     If Target.Column = 4 Then ' Columna D = Lote
         If newRem <> "" And newLote = "" Then
             Target.Value = oldLote  ' restaurar el lote
-            Application.EnableEvents = True
-            Application.ScreenUpdating = True
             MsgBox "No puedes borrar el Lote porque la Remisión tiene dato.", vbExclamation, "OPERACIÓN NO PERMITIDA"
-            Exit Sub
+            GoTo Salida
         End If
     End If
     
@@ -139,10 +125,8 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     If Target.Column = 2 Then ' Columna B = Referencia
         If newRem <> "" And newRef = "" Then
             Target.Value = oldRef  ' restaurar la referencia
-            Application.EnableEvents = True
-            Application.ScreenUpdating = True
             MsgBox "No puedes borrar la Referencia porque la Remisión tiene dato.", vbExclamation, "OPERACIÓN NO PERMITIDA"
-            Exit Sub
+            GoTo Salida
         End If
     End If
 
@@ -151,30 +135,14 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     '===========================================================
     If Target.Column = 2 Then ' Columna B = Referencia
         
-        ' Si había remisión, restar del inventario anterior y catálogo
+        ' Si había remisión, restar del inventario anterior
         If oldRem <> "" And oldRef <> "" And oldLote <> "" Then
             Call CrearOActualizarInventario(oldRef, oldLote, -1)
-            ' Actualizar catálogo (decrementar)
-            Dim wsCat As Worksheet
-            Set wsCat = ThisWorkbook.Sheets("Catalogo")
-            Dim i As Long, ultima As Long
-            ultima = wsCat.Cells(wsCat.Rows.Count, "C").End(xlUp).Row
-            For i = 2 To ultima
-                If Trim(wsCat.Cells(i, "C").Value) = Trim(oldRef) And _
-                   Trim(wsCat.Cells(i, "D").Value) = Trim(oldLote) Then
-                    wsCat.Cells(i, "E").Value = Val(wsCat.Cells(i, "E").Value) - 1
-                    If Val(wsCat.Cells(i, "E").Value) <= 0 Then
-                        wsCat.Rows(i).Delete
-                    End If
-                    Exit For
-                End If
-            Next i
         End If
         
         ' Si hay nueva referencia con remisión, sumar al inventario nuevo
         If newRef <> "" And newLote <> "" And newRem <> "" Then
             Call CrearOActualizarInventario(newRef, newLote, 1)
-            Call InsertarEnCatalogo(newRef, newLote)
         End If
         
         GoTo Salida
@@ -188,25 +156,11 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         ' Si había remisión, restar del inventario anterior
         If oldRem <> "" And oldRef <> "" And oldLote <> "" Then
             Call CrearOActualizarInventario(oldRef, oldLote, -1)
-            ' Actualizar catálogo (decrementar)
-            Set wsCat = ThisWorkbook.Sheets("Catalogo")
-            ultima = wsCat.Cells(wsCat.Rows.Count, "C").End(xlUp).Row
-            For i = 2 To ultima
-                If Trim(wsCat.Cells(i, "C").Value) = Trim(oldRef) And _
-                   Trim(wsCat.Cells(i, "D").Value) = Trim(oldLote) Then
-                    wsCat.Cells(i, "E").Value = Val(wsCat.Cells(i, "E").Value) - 1
-                    If Val(wsCat.Cells(i, "E").Value) <= 0 Then
-                        wsCat.Rows(i).Delete
-                    End If
-                    Exit For
-                End If
-            Next i
         End If
         
         ' Si hay nuevo lote con remisión, sumar al inventario nuevo
         If newRef <> "" And newLote <> "" And newRem <> "" Then
             Call CrearOActualizarInventario(newRef, newLote, 1)
-            Call InsertarEnCatalogo(newRef, newLote)
         End If
         
         GoTo Salida
@@ -221,10 +175,8 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         If newRem <> "" Then
             If newRef = "" Or newLote = "" Then
                 Target.Value = oldRem
-                Application.EnableEvents = True
-                Application.ScreenUpdating = True
                 MsgBox "No se puede registrar la remisión: falta Referencia o Lote.", vbCritical, "VALIDACIÓN FALLIDA"
-                Exit Sub
+                GoTo Salida
             End If
         End If
         
@@ -232,24 +184,6 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         If oldRem <> "" And newRem = "" Then
             If oldRef <> "" And oldLote <> "" Then
                 Call CrearOActualizarInventario(oldRef, oldLote, -1)
-                ' Actualizar catálogo (decrementar)
-                Set wsCat = ThisWorkbook.Sheets("Catalogo")
-                ultima = wsCat.Cells(wsCat.Rows.Count, "C").End(xlUp).Row
-                For i = 2 To ultima
-                    If Trim(wsCat.Cells(i, "C").Value) = Trim(oldRef) And _
-                       Trim(wsCat.Cells(i, "D").Value) = Trim(oldLote) Then
-                        wsCat.Cells(i, "E").Value = Val(wsCat.Cells(i, "E").Value) - 1
-                        If Val(wsCat.Cells(i, "E").Value) <= 0 Then
-                            wsCat.Rows(i).Delete
-                        End If
-                        Exit For
-                    End If
-                Next i
-                
-                ' Mensaje informativo
-                MsgBox "Pieza devuelta al inventario." & vbCrLf & _
-                       "Código: " & oldRef & vbCrLf & _
-                       "Lote: " & oldLote, vbInformation, "Remisión Borrada"
             End If
             GoTo Salida
         End If
@@ -264,7 +198,6 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         If oldRem = "" And newRem <> "" Then
             If newRef <> "" And newLote <> "" Then
                 Call CrearOActualizarInventario(newRef, newLote, 1)
-                Call InsertarEnCatalogo(newRef, newLote)
             End If
             GoTo Salida
         End If
@@ -274,10 +207,12 @@ Private Sub Worksheet_Change(ByVal Target As Range)
 Salida:
     Application.ScreenUpdating = True
     Application.EnableEvents = True
+    isHandlingEnt = False
     Exit Sub
     
 ErrorHandler:
     Application.ScreenUpdating = True
     Application.EnableEvents = True
+    isHandlingEnt = False
     MsgBox "Error en Worksheet_Change: " & Err.Description, vbCritical, "Error"
 End Sub

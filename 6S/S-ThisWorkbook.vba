@@ -4,27 +4,29 @@ Option Explicit
 ' THISWORKBOOK - CONFIGURACIÓN INICIAL Y EVENTOS
 ' =====================================================
 
-' Variable para guardar la dirección original del Enter
-Private direccionOriginal As Long
+Private direccionOriginal As XlDirection
+Private moveAfterReturnOriginal As Boolean
 
 Private Sub Workbook_Open()
-    ' Guardar la configuración original de dirección del Enter
-    direccionOriginal = Application.MoveAfterReturn
-    
+    On Error GoTo CleanUp
+
+    ' Guardar configuración original
+    moveAfterReturnOriginal = Application.MoveAfterReturn
+    direccionOriginal = Application.MoveAfterReturnDirection
+
     ' Cambiar la dirección del Enter a la derecha (xlToRight)
     ' xlDown = 1, xlToRight = 2, xlToLeft = 3, xlUp = 4
     Application.MoveAfterReturn = True
     Application.MoveAfterReturnDirection = xlToRight
-    
-    ' Restaurar intercepción del Enter para saltos personalizados
-    On Error Resume Next
+
+    ' Interceptar Enter para saltos personalizados
     Application.OnKey "~"
     Application.OnKey "~", "InterceptarEnter_Nuevo"
-    On Error GoTo 0
-    
+
     ' Ocultar automáticamente la hoja de Inventario
-    On Error Resume Next
     ThisWorkbook.Sheets("Inventario").Visible = xlSheetVeryHidden
+
+CleanUp:
     On Error GoTo 0
     
     ' Mensaje de bienvenida (opcional)
@@ -33,12 +35,16 @@ End Sub
 
 
 Private Sub Workbook_BeforeClose(Cancel As Boolean)
+    On Error GoTo CleanUp
+
     ' Restaurar la configuración original del Enter
-    Application.MoveAfterReturnDirection = xlDown
-    
+    Application.MoveAfterReturn = moveAfterReturnOriginal
+    Application.MoveAfterReturnDirection = direccionOriginal
+
     ' Limpiar intercepción del Enter
-    On Error Resume Next
     Application.OnKey "~"
+
+CleanUp:
     On Error GoTo 0
     
     ' Guardar cambios automáticamente (opcional)
@@ -83,17 +89,14 @@ End Sub
 ' SUB: PROTEGER/DESPROTEGER HOJAS
 ' =====================================================
 Sub ProtegerHojas()
-    Dim pass As String
-    pass = "2024comerlat"
-    
     On Error Resume Next
     
     ' Proteger hoja de Inventario
-    ThisWorkbook.Sheets("Inventario").Protect Password:=pass, _
+    ThisWorkbook.Sheets("Inventario").Protect PASSWORD:=APP_PASSWORD, _
         DrawingObjects:=True, Contents:=True, Scenarios:=True
     
     ' Proteger hoja de Catálogo (solo lectura para usuarios)
-    ThisWorkbook.Sheets("Catálogo").Protect Password:=pass, _
+    ThisWorkbook.Sheets("Catálogo").Protect PASSWORD:=APP_PASSWORD, _
         DrawingObjects:=True, Contents:=True, Scenarios:=True
     
     MsgBox "Hojas protegidas correctamente.", vbInformation
@@ -103,16 +106,16 @@ End Sub
 Sub DesprotegerHojas()
     Dim pass As String
     pass = InputBox("Ingresa la contraseña:")
-    
-    If pass <> "2024comerlat" Then
+
+    If pass <> APP_PASSWORD Then
         MsgBox "Contraseña incorrecta", vbCritical
         Exit Sub
     End If
     
     On Error Resume Next
     
-    ThisWorkbook.Sheets("Inventario").Unprotect Password:="2024comerlat"
-    ThisWorkbook.Sheets("Catálogo").Unprotect Password:="2024comerlat"
+    ThisWorkbook.Sheets("Inventario").Unprotect PASSWORD:=APP_PASSWORD
+    ThisWorkbook.Sheets("Catálogo").Unprotect PASSWORD:=APP_PASSWORD
     
     MsgBox "Hojas desprotegidas correctamente.", vbInformation
 End Sub
@@ -131,12 +134,12 @@ Sub LimpiarDatosPrueba()
     Dim pass As String
     pass = InputBox("Ingresa la contraseña para confirmar:")
     
-    If pass <> "2024comerlat" Then
+    If pass <> APP_PASSWORD Then
         MsgBox "Contraseña incorrecta. Operación cancelada.", vbCritical
         Exit Sub
     End If
     
-    On Error Resume Next
+    On Error GoTo CleanUp
     Application.ScreenUpdating = False
     Application.EnableEvents = False
     
@@ -167,10 +170,15 @@ Sub LimpiarDatosPrueba()
     ' Nota: Ajustar según la estructura de tu hoja Concentrado
     ' wsConc.Range("Q5:EF1000").ClearContents
     
+CleanUp:
     Application.EnableEvents = True
     Application.ScreenUpdating = True
-    
-    MsgBox "Datos de prueba limpiados correctamente.", vbInformation
+
+    If Err.Number = 0 Then
+        MsgBox "Datos de prueba limpiados correctamente.", vbInformation
+    Else
+        MsgBox "Error al limpiar datos: " & Err.Description, vbCritical
+    End If
 End Sub
 
 

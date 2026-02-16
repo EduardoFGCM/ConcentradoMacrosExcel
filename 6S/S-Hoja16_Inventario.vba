@@ -7,6 +7,7 @@ Option Explicit
 ' =====================================================
 
 Dim oldRefInv As String, oldLoteInv As String, oldCantInv As Variant
+Dim isHandlingInv As Boolean
 
 Private Sub Worksheet_SelectionChange(ByVal Target As Range)
     On Error Resume Next
@@ -21,7 +22,8 @@ End Sub
 
 Private Sub Worksheet_Change(ByVal Target As Range)
     On Error GoTo ErrorHandler
-    
+
+    If isHandlingInv Then Exit Sub
     If Target.CountLarge > 1 Then Exit Sub
     If Target.Row < 2 Then Exit Sub ' No procesar encabezados
     
@@ -34,6 +36,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
     newLote = Trim(Me.Cells(Target.Row, "C").Value)
     newCant = Me.Cells(Target.Row, "D").Value
     
+    isHandlingInv = True
     Application.EnableEvents = False
     Application.ScreenUpdating = False
 
@@ -47,20 +50,16 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         
         If loteActual = "" And newCant <> "" Then
             Target.Value = oldCantInv  ' Restaurar valor anterior
-            Application.EnableEvents = True
-            Application.ScreenUpdating = True
-            MsgBox "Debe ingresar primero el LOTE antes de establecer la CANTIDAD.", _
-                   vbExclamation, "VALIDACIÓN FALLIDA"
-            Exit Sub
+                 MsgBox "Debe ingresar primero el LOTE antes de establecer la CANTIDAD.", _
+                     vbExclamation, "VALIDACIÓN FALLIDA"
+                 GoTo Salida
         End If
         
         If refActual = "" And newCant <> "" Then
             Target.Value = oldCantInv  ' Restaurar valor anterior
-            Application.EnableEvents = True
-            Application.ScreenUpdating = True
-            MsgBox "Debe ingresar primero la REFERENCIA antes de establecer la CANTIDAD.", _
-                   vbExclamation, "VALIDACIÓN FALLIDA"
-            Exit Sub
+                 MsgBox "Debe ingresar primero la REFERENCIA antes de establecer la CANTIDAD.", _
+                     vbExclamation, "VALIDACIÓN FALLIDA"
+                 GoTo Salida
         End If
     End If
     
@@ -73,11 +72,9 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         
         If refCheck = "" And newLote <> "" Then
             Target.Value = oldLoteInv  ' Restaurar valor anterior
-            Application.EnableEvents = True
-            Application.ScreenUpdating = True
-            MsgBox "Debe ingresar primero la REFERENCIA antes del LOTE.", _
-                   vbExclamation, "VALIDACIÓN FALLIDA"
-            Exit Sub
+                 MsgBox "Debe ingresar primero la REFERENCIA antes del LOTE.", _
+                     vbExclamation, "VALIDACIÓN FALLIDA"
+                 GoTo Salida
         End If
     End If
 
@@ -93,10 +90,8 @@ Private Sub Worksheet_Change(ByVal Target As Range)
         ' Validar que la cantidad no sea negativa
         If cantNueva < 0 Then
             Target.Value = oldCantInv
-            Application.EnableEvents = True
-            Application.ScreenUpdating = True
             MsgBox "La cantidad no puede ser negativa.", vbExclamation, "VALIDACIÓN FALLIDA"
-            Exit Sub
+            GoTo Salida
         End If
         
         ' Si la cantidad llega a cero, preguntar si desea eliminar el registro
@@ -106,9 +101,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
                               vbQuestion + vbYesNo, "Confirmar Eliminación")
             If respuesta = vbYes Then
                 Me.Rows(Target.Row).Delete
-                Application.EnableEvents = True
-                Application.ScreenUpdating = True
-                Exit Sub
+                GoTo Salida
             End If
         End If
     End If
@@ -132,9 +125,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
             Me.Cells(filaActual, "D").Value = ""
             MsgBox "Se limpió el registro completo (Lote y Cantidad)." & vbCrLf & _
                    "Referencia borrada: " & oldRefInv, vbInformation, "Registro Limpiado"
-            Application.EnableEvents = True
-            Application.ScreenUpdating = True
-            Exit Sub
+                 GoTo Salida
         End If
         
         If Target.Column = 3 And newLote = "" And oldLoteInv <> "" Then
@@ -142,9 +133,7 @@ Private Sub Worksheet_Change(ByVal Target As Range)
             Me.Cells(filaActual, "D").Value = ""
             MsgBox "Se limpió la Cantidad del registro." & vbCrLf & _
                    "Lote borrado: " & oldLoteInv, vbInformation, "Cantidad Limpiada"
-            Application.EnableEvents = True
-            Application.ScreenUpdating = True
-            Exit Sub
+                 GoTo Salida
         End If
         
         ' Solo verificar si ambos campos están completos
@@ -164,11 +153,9 @@ Private Sub Worksheet_Change(ByVal Target As Range)
                             Target.Value = oldLoteInv
                         End If
                         
-                        Application.EnableEvents = True
-                        Application.ScreenUpdating = True
                         MsgBox "Ya existe un registro con esta combinación de Referencia y Lote.", _
                                vbExclamation, "REGISTRO DUPLICADO"
-                        Exit Sub
+                        GoTo Salida
                     End If
                 End If
             Next i
@@ -178,11 +165,13 @@ Private Sub Worksheet_Change(ByVal Target As Range)
 Salida:
     Application.ScreenUpdating = True
     Application.EnableEvents = True
+    isHandlingInv = False
     Exit Sub
     
 ErrorHandler:
     Application.ScreenUpdating = True
     Application.EnableEvents = True
+    isHandlingInv = False
     MsgBox "Error en Inventario: " & Err.Description, vbCritical, "Error"
 End Sub
 

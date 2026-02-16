@@ -1,8 +1,8 @@
 Option Explicit
-   
+
 ' =====================================================
 ' HOJA: CATÁLOGO
-' Columnas: Descripción (B), ID/Referencia (C), Lote (D), 
+' Columnas: Descripción (B), ID/Referencia (C), Lote (D),
 '           Cantidad de lotes repetidos (E)
 ' Esta hoja es principalmente de consulta
 ' Se actualiza automáticamente desde la Hoja Entradas
@@ -16,6 +16,8 @@ End Sub
 
 Private Sub Worksheet_Change(ByVal Target As Range)
     On Error GoTo ErrorHandler
+
+    If Target.CountLarge > 1 Then Exit Sub
     
     ' Bloquear cambios en columna E (cantidad de lotes repetidos)
     ' Esta columna se debe actualizar automáticamente
@@ -50,8 +52,8 @@ Public Sub ActualizarDescripcion()
     Dim ultEnt As Long, ultCat As Long
     Dim i As Long, j As Long
     
-    Set wsEnt = ThisWorkbook.Sheets("Entradas")
-    Set wsCat = ThisWorkbook.Sheets("Catalogo")
+    Set wsEnt = ThisWorkbook.Sheets("ENTRADAS Y SALIDAS")
+    Set wsCat = ThisWorkbook.Sheets("Catálogo")
     
     ' Esta función puede ser llamada manualmente si se necesita
     ' sincronizar descripciones desde otra fuente
@@ -70,7 +72,7 @@ Sub MostrarOcultarInventario()
 
     pass = InputBox("Ingresa la contraseña:")
 
-    If pass <> "cOMERLAT2025" Then
+    If pass <> APP_PASSWORD Then
         MsgBox "Contraseña incorrecta", vbCritical
         Exit Sub
     End If
